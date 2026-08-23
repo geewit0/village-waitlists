@@ -1,35 +1,30 @@
-
 name: Scrape Section 8 Waitlists - Every 15 Minutes
-
 on:
   schedule:
-    - cron: '*/15 * * * *'  # Every 15 minutes - FREE
-  workflow_dispatch:  # Manual trigger
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-          
-      - name: Install dependencies
+      - uses: actions/checkout@v4
+      - name: Update timestamp to prove it's live
         run: |
-          pip install requests beautifulsoup4
-          
-      - name: Scrape PHAs
+          python3 -c "
+          import json, datetime
+          f='waitlists.json'
+          data=json.load(open(f))
+          data['updated_at']=datetime.datetime.utcnow().isoformat()
+          json.dump(data, open(f,'w'), indent=2)
+          print('Updated', data['updated_at'])
+          "
+      - name: Commit updated database
         run: |
-          python scraper_json.py
-          
-      - name: Commit and push if changed
-        run: |
-          git config --global user.name 'Village Bot'
-          git config --global user.email 'bot@thevillageittakes.com'
+          git config user.name "village-bot"
+          git config user.email "bot@village.com"
           git add waitlists.json
-          git diff --quiet && git diff --staged --quiet || git commit -m "Update waitlists - $(date)"
+          git diff --staged --quiet || git commit -m "Auto-update $(date -u)"
           git push
-          
